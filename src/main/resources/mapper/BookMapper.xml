@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sakura.novel.mapper.BookMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.sakura.novel.entity.Book">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="author_id" property="authorId" jdbcType="INTEGER"/>
+        <result column="category_id" property="categoryId" jdbcType="INTEGER"/>
+        <result column="description" property="description" jdbcType="LONGVARCHAR"/>
+        <result column="cover_image_url" property="coverImageUrl" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="is_vip" property="isVip" jdbcType="BOOLEAN"/>
+        <result column="word_count" property="wordCount" jdbcType="INTEGER"/>
+        <result column="published_time" property="publishedTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+
+    <!-- BookBasicDTO结果映射 -->
+    <resultMap id="BookBasicResultMap" type="com.sakura.novel.DTO.Response.BookBasicDTO">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="author_id" property="authorId" jdbcType="INTEGER"/>
+        <result column="author_name" property="authorName" jdbcType="VARCHAR"/>
+        <result column="author_bio" property="authorBio" jdbcType="VARCHAR"/>
+        <result column="category_id" property="categoryId" jdbcType="INTEGER"/>
+        <result column="category_name" property="categoryName" jdbcType="VARCHAR"/>
+        <result column="channel" property="channel" jdbcType="INTEGER"/>
+        <result column="description" property="description" jdbcType="LONGVARCHAR"/>
+        <result column="cover_image_url" property="coverImageUrl" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="is_vip" property="isVip" jdbcType="BOOLEAN"/>
+        <result column="word_count" property="wordCount" jdbcType="INTEGER"/>
+        <result column="published_time" property="publishedTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, title, author_id, category_id, description, cover_image_url,
+        status, is_vip, word_count, published_time, create_time, update_time
+    </sql>
+
+    <!-- BookInfo字段列表 -->
+    <sql id="BookInfo_Column_List">
+        b.id, b.title, b.author_id, a.name as author_name, a.bio as author_bio,
+        b.category_id, c.name as category_name, c.channel,
+        b.description, b.cover_image_url, b.status, b.is_vip, b.word_count,
+        b.published_time, b.create_time, b.update_time,
+        COALESCE(ch_count.chapter_count, 0) as chapter_count,
+        ch_latest.title as latest_chapter_title,
+        ch_latest.create_time as latest_chapter_time,
+        COALESCE(bs.favorite_count, 0) as favorite_count,
+        COALESCE(bs.click_count, 0) as click_count,
+        COALESCE(bs.recommend_count, 0) as recommend_count,
+        COALESCE(r.average_rating, 0) as average_rating,
+        COALESCE(r.review_count, 0) as review_count
+    </sql>
+
+    <!-- BookBasic字段列表 -->
+    <sql id="BookBasic_Column_List">
+        b.id, b.title, b.author_id, a.name as author_name, a.bio as author_bio,
+        b.category_id, c.name as category_name, c.channel,
+        b.description, b.cover_image_url, b.status, b.is_vip, b.word_count,
+        b.published_time, b.create_time, b.update_time
+    </sql>
+
+    <!-- 搜索条件 -->
+    <sql id="Search_Where_Clause">
+        <where>
+            <if test="title != null and title != ''">
+                AND b.title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <if test="channel != null">
+                AND c.channel = #{channel}
+            </if>
+            <if test="categoryId != null">
+                AND b.category_id = #{categoryId}
+            </if>
+            <if test="authorId != null">
+                AND b.author_id = #{authorId}
+            </if>
+            <if test="minWordCount != null">
+                AND b.word_count >= #{minWordCount}
+            </if>
+            <if test="maxWordCount != null">
+                AND b.word_count &lt;= #{maxWordCount}
+            </if>
+            <if test="status != null">
+                AND b.status = #{status}
+            </if>
+            <if test="isVip != null">
+                AND b.is_vip = #{isVip}
+            </if>
+        </where>
+    </sql>
+
+    <!-- ===== 基础 CRUD 操作 ===== -->
+
+    <!-- 插入书籍 -->
+    <insert id="insert" parameterType="com.sakura.novel.entity.Book" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO books (title, author_id, category_id, description, cover_image_url,
+                          status, is_vip, word_count, published_time, create_time, update_time)
+        VALUES (#{title}, #{authorId}, #{categoryId}, #{description}, #{coverImageUrl},
+                #{status}, #{isVip}, #{wordCount}, #{publishedTime}, #{createTime}, #{updateTime})
+    </insert>
+
+    <!-- 根据ID删除书籍 -->
+    <delete id="deleteById" parameterType="java.lang.Integer">
+        DELETE FROM books WHERE id = #{id}
+    </delete>
+
+    <!-- 更新书籍信息 -->
+    <update id="updateById" parameterType="com.sakura.novel.entity.Book">
+        UPDATE books
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="authorId != null">author_id = #{authorId},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="coverImageUrl != null">cover_image_url = #{coverImageUrl},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="isVip != null">is_vip = #{isVip},</if>
+            <if test="wordCount != null">word_count = #{wordCount},</if>
+            <if test="publishedTime != null">published_time = #{publishedTime},</if>
+            update_time = #{updateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询书籍 -->
+    <select id="selectById" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM books
+        WHERE id = #{id}
+    </select>
+
+    <!-- ===== 管理功能 ===== -->
+
+    <!-- 批量插入书籍 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO books (title, author_id, category_id, description, cover_image_url,
+                          status, is_vip, word_count, published_time, create_time, update_time)
+        VALUES
+        <foreach collection="books" item="book" separator=",">
+            (#{book.title}, #{book.authorId}, #{book.categoryId}, #{book.description}, #{book.coverImageUrl},
+             #{book.status}, #{book.isVip}, #{book.wordCount}, #{book.publishedTime}, #{book.createTime}, #{book.updateTime})
+        </foreach>
+    </insert>
+
+    <!-- 检查书名是否存在 -->
+    <select id="existsByTitle" parameterType="java.lang.String" resultType="java.lang.Boolean">
+        SELECT COUNT(1) > 0
+        FROM books
+        WHERE title = #{title}
+    </select>
+
+    <!-- 统计书籍总数 -->
+    <select id="count" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM books
+    </select>
+
+    <!-- ===== BookBasicDTO 相关查询（轻量级） ===== -->
+
+    <!-- 查询所有书籍基本信息列表 -->
+    <select id="selectBookBasicList" resultMap="BookBasicResultMap">
+        SELECT <include refid="BookBasic_Column_List" />
+        FROM books b
+        LEFT JOIN authors a ON b.author_id = a.id
+        LEFT JOIN categories c ON b.category_id = c.id
+        ORDER BY b.update_time DESC
+    </select>
+
+    <!-- 综合搜索书籍基本信息 -->
+    <select id="searchBookBasicWithAllConditions" resultMap="BookBasicResultMap">
+        SELECT <include refid="BookBasic_Column_List" />
+        FROM books b
+        LEFT JOIN authors a ON b.author_id = a.id
+        LEFT JOIN categories c ON b.category_id = c.id
+        <include refid="Search_Where_Clause" />
+        ORDER BY b.update_time DESC
+    </select>
+
+    <select id="searchBooks" resultType="com.sakura.novel.DTO.Response.BookInfoRespDto">
+        SELECT
+        b.id,
+        b.title,
+        b.description,
+        b.cover_image_url,
+        b.status,
+        a.name AS authorName,
+        c.name AS categoryName
+        FROM
+        book b
+        LEFT JOIN
+        author a ON b.author_id = a.id
+        LEFT JOIN
+        category c ON b.category_id = c.id
+        <where>
+            <if test="searchDTO.title != null and searchDTO.title != ''">
+                AND b.title LIKE CONCAT('%', #{searchDTO.title}, '%')
+            </if>
+            <if test="searchDTO.channel != null">
+                AND b.channel = #{searchDTO.channel}
+            </if>
+            <if test="searchDTO.categoryId != null">
+                AND b.category_id = #{searchDTO.categoryId}
+            </if>
+            <if test="searchDTO.authorId != null">
+                AND b.author_id = #{searchDTO.authorId}
+            </if>
+            <if test="searchDTO.minWordCount != null">
+                AND b.word_count >= #{searchDTO.minWordCount}
+            </if>
+            <if test="searchDTO.maxWordCount != null">
+                AND b.word_count &lt;= #{searchDTO.maxWordCount}
+            </if>
+            <if test="searchDTO.status != null">
+                AND b.status = #{searchDTO.status}
+            </if>
+            <if test="searchDTO.isVip != null">
+                AND b.is_vip = #{searchDTO.isVip}
+            </if>
+        </where>
+        ORDER BY
+        b.update_time DESC
+    </select>
+
+</mapper>

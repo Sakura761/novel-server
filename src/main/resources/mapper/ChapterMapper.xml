@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sakura.novel.mapper.ChapterMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.sakura.novel.entity.Chapter">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="book_id" property="bookId" jdbcType="INTEGER"/>
+        <result column="chapter_number" property="chapterNumber" jdbcType="INTEGER"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="content" property="content" jdbcType="VARCHAR"/>
+        <result column="word_count" property="wordCount" jdbcType="INTEGER"/>
+        <result column="is_vip" property="isVip" jdbcType="BOOLEAN"/>
+        <result column="published_time" property="publishedTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 章节列表结果映射（不包含正文内容） -->
+    <resultMap id="ChapterListResultMap" type="com.sakura.novel.entity.Chapter">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="book_id" property="bookId" jdbcType="INTEGER"/>
+        <result column="chapter_number" property="chapterNumber" jdbcType="INTEGER"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="word_count" property="wordCount" jdbcType="INTEGER"/>
+        <result column="is_vip" property="isVip" jdbcType="BOOLEAN"/>
+        <result column="published_time" property="publishedTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, book_id, chapter_number, title, content, word_count, is_vip, published_time, create_time
+    </sql>
+
+    <!-- 章节列表字段（不包含正文内容） -->
+    <sql id="Chapter_List_Column_List">
+        id, book_id, chapter_number, title, word_count, is_vip, published_time, create_time
+    </sql>
+
+    <!-- 插入章节 -->
+    <insert id="insert" parameterType="com.sakura.novel.entity.Chapter" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chapters (book_id, chapter_number, title, content, word_count, is_vip, published_time, create_time)
+        VALUES (#{bookId}, #{chapterNumber}, #{title}, #{content}, #{wordCount}, #{isVip}, #{publishedTime}, #{createTime})
+    </insert>
+
+    <!-- 根据ID删除章节 -->
+    <delete id="deleteById" parameterType="INTEGER">
+        DELETE FROM chapters WHERE id = #{id}
+    </delete>
+
+    <!-- 根据书籍ID删除所有章节 -->
+    <delete id="deleteByBookId" parameterType="INTEGER">
+        DELETE FROM chapters WHERE book_id = #{bookId}
+    </delete>
+
+    <!-- 更新章节信息 -->
+    <update id="updateById" parameterType="com.sakura.novel.entity.Chapter">
+        UPDATE chapters
+        SET book_id = #{bookId},
+            chapter_number = #{chapterNumber},
+            title = #{title},
+            content = #{content},
+            word_count = #{wordCount},
+            is_vip = #{isVip},
+            published_time = #{publishedTime}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询章节 -->
+    <select id="selectById" parameterType="INTEGER" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM chapters
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据书籍ID查询所有章节 -->
+    <select id="selectByBookId" parameterType="INTEGER" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM chapters
+        WHERE book_id = #{bookId}
+        ORDER BY chapter_number ASC
+    </select>
+
+    <!-- 根据书籍ID和章节号查询章节 -->
+    <select id="selectByBookIdAndChapterNumber" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM chapters
+        WHERE book_id = #{bookId} AND chapter_number = #{chapterNumber}
+    </select>
+
+    <!-- 分页查询指定书籍的章节列表（不包含正文内容） -->
+    <select id="selectChapterListByBookId" parameterType="INTEGER" resultMap="ChapterListResultMap">
+        SELECT <include refid="Chapter_List_Column_List"/>
+        FROM chapters
+        WHERE book_id = #{bookId}
+        ORDER BY chapter_number ASC
+    </select>
+
+    <!-- 查询指定书籍的章节总数 -->
+    <select id="countByBookId" parameterType="INTEGER" resultType="INTEGER">
+        SELECT COUNT(*)
+        FROM chapters
+        WHERE book_id = #{bookId}
+    </select>
+
+    <!-- 查询指定书籍的VIP章节数量 -->
+    <select id="countVipChaptersByBookId" parameterType="INTEGER" resultType="INTEGER">
+        SELECT COUNT(*)
+        FROM chapters
+        WHERE book_id = #{bookId} AND is_vip = true
+    </select>
+
+    <!-- 查询指定书籍的最新章节 -->
+    <select id="selectLatestChapterByBookId" parameterType="INTEGER" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM chapters
+        WHERE book_id = #{bookId}
+        ORDER BY chapter_number DESC
+        LIMIT 1
+    </select>
+
+    <!-- 批量插入章节 -->
+    <insert id="batchInsert" parameterType="java.util.List" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chapters (book_id, chapter_number, title, content, word_count, is_vip, published_time, create_time)
+        VALUES
+        <foreach collection="chapters" item="chapter" separator=",">
+            (#{chapter.bookId}, #{chapter.chapterNumber}, #{chapter.title}, #{chapter.content},
+             #{chapter.wordCount}, #{chapter.isVip}, #{chapter.publishedTime}, #{chapter.createTime})
+        </foreach>
+    </insert>
+
+    <!-- 检查章节是否存在 -->
+    <select id="existsByBookIdAndChapterNumber" resultType="BOOLEAN">
+        SELECT COUNT(*) > 0
+        FROM chapters
+        WHERE book_id = #{bookId} AND chapter_number = #{chapterNumber}
+    </select>
+
+    <!-- 获取指定书籍的前一章节 -->
+    <select id="selectPreviousChapter" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM chapters
+        WHERE book_id = #{bookId} AND chapter_number &lt; #{chapterNumber}
+        ORDER BY chapter_number DESC
+        LIMIT 1
+    </select>
+
+    <!-- 获取指定书籍的下一章节 -->
+    <select id="selectNextChapter" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM chapters
+        WHERE book_id = #{bookId} AND chapter_number &gt; #{chapterNumber}
+        ORDER BY chapter_number
+        LIMIT 1
+    </select>
+<!--    public class ChapterSummary {-->
+
+<!--    @Schema(description = "章节ID", example = "1")-->
+<!--    private Integer id;-->
+
+<!--    @Schema(description = "章节序号", example = "1")-->
+<!--    private Integer chapterNumber;-->
+
+<!--    @Schema(description = "章节标题", example = "第1章 陨落的天才")-->
+<!--    private String title;-->
+<!--    }-->
+    <select id="getChapterList" resultType="com.sakura.novel.DTO.Response.ChapterSummary">
+        select id, chapter_number as chapterNumber, title
+        from chapters
+        where book_id = #{bookId}
+        order by chapter_number asc
+    </select>
+
+</mapper>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.sakura.novel.mapper.BookStatsMapper">
+
+    <update id="updateBookStats">
+        UPDATE book_stats
+        SET
+            view_count = view_count + #{readCount},
+            recommend_count = recommend_count + #{recommendVotes},
+            collection_count = collection_count + #{collectionCount},
+            last_updated_time = NOW()
+        WHERE
+            book_id = #{bookId}
+    </update>
+
+</mapper>

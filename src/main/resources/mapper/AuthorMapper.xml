@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sakura.novel.mapper.AuthorMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.sakura.novel.entity.Author">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="bio" property="bio" jdbcType="LONGVARCHAR"/>
+        <result column="user_id" property="userId" jdbcType="INTEGER"/>
+        <result column="level" property="level" jdbcType="TINYINT"/>
+        <result column="total_word_count" property="totalWordCount" jdbcType="BIGINT"/>
+        <result column="total_books" property="totalBooks" jdbcType="INTEGER"/>
+        <result column="avatar_url" property="avatarUrl" jdbcType="VARCHAR"/>
+        <result column="follower_count" property="followerCount" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, name, bio, user_id, level, total_word_count, total_books, avatar_url, follower_count, create_time
+    </sql>
+
+    <!-- 插入作者 -->
+    <insert id="insert" parameterType="com.sakura.novel.entity.Author" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO authors (name, bio, user_id, level, total_word_count, total_books, follower_count, create_time)
+        VALUES (#{name}, #{bio}, #{userId}, #{level}, #{totalWordCount}, #{totalBooks}, #{followerCount}, #{createTime})
+    </insert>
+
+    <!-- 根据ID删除作者 -->
+    <delete id="deleteById" parameterType="INTEGER">
+        DELETE FROM authors WHERE id = #{id}
+    </delete>
+
+    <!-- 更新作者信息 -->
+    <update id="updateById" parameterType="com.sakura.novel.entity.Author">
+        UPDATE authors
+        SET name = #{name},
+            bio = #{bio},
+            user_id = #{userId},
+            level = #{level},
+            total_word_count = #{totalWordCount},
+            total_books = #{totalBooks},
+            follower_count = #{followerCount}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询作者 -->
+    <select id="selectById" parameterType="INTEGER" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM authors
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据用户ID查询作者 -->
+    <select id="selectByUserId" parameterType="INTEGER" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM authors
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 根据作者名称查询作者（支持模糊搜索） -->
+    <select id="selectByNameLike" parameterType="STRING" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM authors
+        WHERE name LIKE CONCAT('%', #{name}, '%')
+        ORDER BY name
+    </select>
+
+    <!-- 查询所有作者 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM authors
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 分页查询作者列表（支持多条件搜索） -->
+    <select id="selectAuthorsWithConditions" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM authors
+        <where>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="minLevel != null">
+                AND level &gt;= #{minLevel}
+            </if>
+            <if test="maxLevel != null">
+                AND level &lt;= #{maxLevel}
+            </if>
+            <if test="minTotalBooks != null">
+                AND total_books &gt;= #{minTotalBooks}
+            </if>
+            <if test="maxTotalBooks != null">
+                AND total_books &lt;= #{maxTotalBooks}
+            </if>
+            <if test="minWordCount != null">
+                AND total_word_count &gt;= #{minWordCount}
+            </if>
+            <if test="maxWordCount != null">
+                AND total_word_count &lt;= #{maxWordCount}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 批量插入作者 -->
+    <insert id="batchInsert" parameterType="java.util.List" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO authors (name, bio, user_id, level, total_word_count, total_books, follower_count, create_time)
+        VALUES
+        <foreach collection="authors" item="author" separator=",">
+            (#{author.name}, #{author.bio}, #{author.userId}, #{author.level},
+             #{author.totalWordCount}, #{author.totalBooks}, #{author.followerCount}, #{author.createTime})
+        </foreach>
+    </insert>
+
+    <!-- 检查作者名称是否存在 -->
+    <select id="existsByName" parameterType="STRING" resultType="BOOLEAN">
+        SELECT COUNT(*) > 0
+        FROM authors
+        WHERE name = #{name}
+    </select>
+
+    <!-- 检查用户是否已是作者 -->
+    <select id="existsByUserId" parameterType="INTEGER" resultType="BOOLEAN">
+        SELECT COUNT(*) > 0
+        FROM authors
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 统计作者总数 -->
+    <select id="count" resultType="INTEGER">
+        SELECT COUNT(*)
+        FROM authors
+    </select>
+
+    <!-- 根据等级统计作者数量 -->
+    <select id="countByLevel" parameterType="java.lang.Short" resultType="INTEGER">
+        SELECT COUNT(*)
+        FROM authors
+        WHERE level = #{level}
+    </select>
+
+    <!-- 查询热门作者（按粉丝数排序） -->
+    <select id="selectPopularAuthors" parameterType="INTEGER" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM authors
+        ORDER BY follower_count DESC, create_time DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <!-- 查询高产作者（按作品数排序） -->
+    <select id="selectProductiveAuthors" parameterType="INTEGER" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM authors
+        ORDER BY total_books DESC, total_word_count DESC, create_time DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <!-- 更新作者统计信息 -->
+    <update id="updateAuthorStats">
+        UPDATE authors
+        SET total_word_count = #{totalWordCount},
+            total_books = #{totalBooks}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新作者粉丝数 -->
+    <update id="updateFollowerCount">
+        UPDATE authors
+        SET follower_count = #{followerCount}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 增加粉丝数 -->
+    <update id="increaseFollowerCount" parameterType="INTEGER">
+        UPDATE authors
+        SET follower_count = follower_count + 1
+        WHERE id = #{id}
+    </update>
+
+    <!-- 减少粉丝数 -->
+    <update id="decreaseFollowerCount" parameterType="INTEGER">
+        UPDATE authors
+        SET follower_count = GREATEST(follower_count - 1, 0)
+        WHERE id = #{id}
+    </update>
+
+</mapper>

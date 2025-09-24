@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sakura.novel.mapper.BookDailyStatsMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BookDailyStatsResultMap" type="com.sakura.novel.entity.BookDailyStats">
+        <id column="id" property="id"/>
+        <result column="book_id" property="bookId"/>
+        <result column="stat_date" property="statDate"/>
+        <result column="read_count" property="readCount"/>
+        <result column="recommend_votes" property="recommendVotes"/>
+        <result column="monthly_tickets" property="monthlyTickets"/>
+        <result column="collection_count" property="collectionCount"/>
+        <result column="created_time" property="createdTime"/>
+        <result column="updated_time" property="updatedTime"/>
+    </resultMap>
+
+    <!-- 插入或更新每日统计数据 -->
+    <insert id="insertOrUpdate" parameterType="com.sakura.novel.entity.BookDailyStats">
+        INSERT INTO book_daily_stats (
+            book_id, stat_date, read_count, recommend_votes,
+            monthly_tickets, collection_count, created_time, updated_time
+        ) VALUES (
+            #{bookId}, #{statDate}, #{readCount}, #{recommendVotes},
+            #{monthlyTickets}, #{collectionCount}, NOW(), NOW()
+        ) ON DUPLICATE KEY UPDATE
+            read_count = read_count + VALUES(read_count),
+            recommend_votes = recommend_votes + VALUES(recommend_votes),
+            monthly_tickets = monthly_tickets + VALUES(monthly_tickets),
+            collection_count = collection_count + VALUES(collection_count),
+            updated_time = NOW()
+    </insert>
+
+    <!-- 批量插入或更新 -->
+    <insert id="batchInsertOrUpdate" parameterType="java.util.List">
+        INSERT INTO book_daily_stats (
+            book_id, stat_date, read_count, recommend_votes,
+            monthly_tickets, collection_count, created_time, updated_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.bookId}, #{item.statDate}, #{item.readCount}, #{item.recommendVotes},
+             #{item.monthlyTickets}, #{item.collectionCount}, NOW(), NOW())
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            read_count = read_count + VALUES(read_count),
+            recommend_votes = recommend_votes + VALUES(recommend_votes),
+            monthly_tickets = monthly_tickets + VALUES(monthly_tickets),
+            collection_count = collection_count + VALUES(collection_count),
+            updated_time = NOW()
+    </insert>
+
+    <!-- 根据书籍ID和日期查询 -->
+    <select id="selectByBookIdAndDate" resultMap="BookDailyStatsResultMap">
+        SELECT * FROM book_daily_stats
+        WHERE book_id = #{bookId} AND stat_date = #{statDate}
+    </select>
+
+    <!-- 根据日期范围查询 -->
+    <select id="selectByDateRange" resultMap="BookDailyStatsResultMap">
+        SELECT * FROM book_daily_stats
+        WHERE stat_date BETWEEN #{startDate} AND #{endDate}
+        ORDER BY stat_date DESC, book_id ASC
+    </select>
+
+    <!-- 根据书籍ID和日期范围查询 -->
+    <select id="selectByBookIdAndDateRange" resultMap="BookDailyStatsResultMap">
+        SELECT * FROM book_daily_stats
+        WHERE book_id = #{bookId}
+        AND stat_date BETWEEN #{startDate} AND #{endDate}
+        ORDER BY stat_date DESC
+    </select>
+
+</mapper>

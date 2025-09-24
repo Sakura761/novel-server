@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sakura.novel.mapper.BookRankingMapper">
+
+    <!--
+      修正说明:
+      1. 简化了SQL片段，移除了复杂的别名引用。
+      2. `bookDetailsJoins` 现在假设 `books` 表的别名是 `b`。
+      3. 所有<select>查询都直接 `LEFT JOIN books b`，然后包含其他JOIN片段。
+      4. 解决了 "Unknown column 'book_ref.book_id'" 的错误。
+    -->
+
+    <!-- 可重用的SQL片段，用于选择书籍相关字段 -->
+    <sql id="bookDetailsFields">
+        b.id as bookId,
+        b.title,
+        b.description,
+        b.cover_image_url as coverImageUrl,
+        b.word_count as wordCount,
+        CASE b.status WHEN 1 THEN '连载中' ELSE '已完结' END as statusText,
+        a.name as authorName,
+        CONCAT_WS(' • ', c_parent.name, c_child.name) as categoryName,
+        ch.title as latestChapterTitle,
+        bs.last_updated_time as lastUpdatedTime
+    </sql>
+
+    <!-- 可重用的SQL片段，用于连接书籍的附属信息 (作者、分类、章节等) -->
+    <sql id="bookDetailsJoins">
+        LEFT JOIN authors a ON b.author_id = a.id
+        LEFT JOIN categories c_child ON b.category_id = c_child.id
+        LEFT JOIN categories c_parent ON c_child.parent_id = c_parent.id
+        LEFT JOIN book_stats bs ON b.id = bs.book_id
+        LEFT JOIN chapters ch ON bs.last_updated_chapter_id = ch.id
+    </sql>
+
+
+    <!-- =============================================================== -->
+    <!--  1. 用于定时任务的【计算】查询 (数据源: book_daily_stats)        -->
+    <!-- =============================================================== -->
+
+    <select id="calculateDailyRanking" resultType="com.sakura.novel.DTO.Response.RankingResponse$RankingItem">
+        SELECT
+        ROW_NUMBER() OVER (ORDER BY bds.${statType} DESC) as `rank`,
+        bds.book_id,
+        bds.${statType} AS score,
+        <include refid="bookDetailsFields"/>
+        FROM book_daily_stats bds
+        LEFT JOIN books b ON bds.book_id = b.id
+        <include refid="bookDetailsJoins"/>
+        WHERE bds.stat_date = #{date}
+        ORDER BY score DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="calculatePeriodicRanking" resultType="com.sakura.novel.DTO.Response.RankingResponse$RankingItem">
+        SELECT
+        ROW_NUMBER() OVER (ORDER BY total_score DESC) as `rank`,
+        agg_stats.book_id,
+        agg_stats.total_score as score,
+        <include refid="bookDetailsFields"/>
+        FROM (
+        SELECT
+        bds.book_id,
+        SUM(bds.${statType}) as total_score
+        FROM book_daily_stats bds
+        WHERE bds.stat_date BETWEEN #{startDate} AND #{endDate}
+        GROUP BY bds.book_id
+        ) as agg_stats
+        LEFT JOIN books b ON agg_stats.book_id = b.id
+        <include refid="bookDetailsJoins"/>
+        ORDER BY score DESC
+        LIMIT #{limit}
+    </select>
+    <!-- 新增：计算巅峰榜 -->
+    <select id="calculatePeakRanking" resultType="com.sakura.novel.DTO.Response.RankingResponse$RankingItem">
+        SELECT
+        ROW_NUMBER() OVER (ORDER BY score DESC) as `rank`,
+        book_id,
+        score,
+        <include refid="bookDetailsFields"/>
+        FROM (
+        SELECT
+        -- 巅峰分计算公式 (权重可按需调整)
+        (bs.view_count * 0.3 + bs.collection_count * 1.0 + bs.recommend_count * 0.8 + bs.rating_average * 5000) AS score,
+        b.id as book_id
+        FROM
+        book_stats bs
+        LEFT JOIN books b ON bs.book_id = b.id
+        <if test="channel != null">
+            LEFT JOIN categories c_child ON b.category_id = c_child.id
+            WHERE c_child.channel = #{channel}
+        </if>
+        ) as peak_data
+        LEFT JOIN books b ON peak_data.book_id = b.id
+        <include refid="bookDetailsJoins"/>
+        ORDER BY score DESC
+        LIMIT #{limit}
+    </select>
+    <!-- =============================================================== -->
+    <!--  2. 用于API的【结果】查询 (数据源: book_rankings)                -->
+    <!-- =============================================================== -->
+
+    <select id="getSavedRanking" resultType="com.sakura.novel.DTO.Response.RankingResponse$RankingItem">
+        SELECT
+        br.rank_position as `rank`,
+        br.book_id,
+        br.score,
+        <include refid="bookDetailsFields"/>
+        FROM book_rankings br
+        LEFT JOIN books b ON br.book_id = b.id
+        <include refid="bookDetailsJoins"/>
+        WHERE br.rank_type = #{rankType}
+        AND br.stat_type = #{statType}
+        AND br.period_start = #{periodStart}
+        AND br.period_end = #{periodEnd}
+        ORDER BY br.rank_position ASC
+        LIMIT #{limit}
+    </select>
+
+
+    <!-- =============================================================== -->
+    <!--  3. 数据操作 (增/删) - 这部分无需修改                            -->
+    <!-- =============================================================== -->
+
+    <insert id="insertBookRankings" parameterType="java.util.List">
+        INSERT INTO book_rankings (
+        book_id, rank_type, stat_type, rank_position, score,
+        period_start, period_end, create_time
+        ) VALUES
+        <foreach collection="rankings" item="item" separator=",">
+            (#{item.bookId}, #{item.rankType}, #{item.statType}, #{item.rankPosition}, #{item.score},
+            #{item.periodStart}, #{item.periodEnd}, #{item.createTime})
+        </foreach>
+    </insert>
+
+    <delete id="deleteRankingByPeriod">
+        DELETE FROM book_rankings
+        WHERE rank_type = #{rankType}
+          AND stat_type = #{statType}
+          AND period_start = #{periodStart}
+          AND period_end = #{periodEnd}
+    </delete>
+    <!-- =============================================================== -->
+    <!--  4. 新增的巅峰榜【实时计算】查询 (数据源: book_stats)          -->
+    <!-- =============================================================== -->
+    <select id="getPeakRanking" resultType="com.sakura.novel.DTO.Response.RankingResponse$RankingItem">
+        SELECT
+        ROW_NUMBER() OVER (ORDER BY score DESC) as `rank`,
+        book_id,
+        score,
+        title,
+        description,
+        coverImageUrl,
+        wordCount,
+        statusText,
+        authorName,
+        categoryName,
+        latestChapterTitle,
+        lastUpdatedTime
+        FROM (
+        SELECT
+        -- 巅峰分计算公式 (权重可按需调整)
+        (bs.view_count * 0.3 + bs.collection_count * 1.0 + bs.recommend_count * 0.8 + bs.rating_average * 5000) AS score,
+        b.id as book_id,
+        <include refid="bookDetailsFields"/>
+        FROM
+        book_stats bs
+        LEFT JOIN books b ON bs.book_id = b.id
+        -- 这里手动展开 JOIN，并移除了重复的 book_stats JOIN
+        LEFT JOIN authors a ON b.author_id = a.id
+        LEFT JOIN categories c_child ON b.category_id = c_child.id
+        LEFT JOIN categories c_parent ON c_child.parent_id = c_parent.id
+        -- 直接使用主表 bs 来连接 chapters 表
+        LEFT JOIN chapters ch ON bs.last_updated_chapter_id = ch.id
+        <where>
+            <if test="channel != null">
+                c_child.channel = #{channel}
+            </if>
+        </where>
+        ) as peak_data
+        ORDER BY
+        score DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- =============================================================== -->
+    <!--  5. 新增的辅助查询                                              -->
+    <!-- =============================================================== -->
+    <select id="findLatestRankingDate" resultType="java.time.LocalDate">
+        SELECT MAX(period_start)
+        FROM book_rankings
+        WHERE rank_type = #{rankType}
+          AND stat_type = #{statType}
+    </select>
+</mapper>

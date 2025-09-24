@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sakura.novel.mapper.BookShelfMapper">
+
+    <resultMap id="BaseResultMap" type="com.sakura.novel.entity.UserBookshelf">
+        <id property="id" column="id" />
+        <result property="userId" column="user_id" />
+        <result property="bookId" column="book_id" />
+        <result property="lastReadChapterId" column="last_read_chapter_id" />
+        <result property="lastReadTime" column="last_read_time" />
+        <result property="addedTime" column="added_time" />
+    </resultMap>
+    <resultMap id="BookshelfItemResultMap" type="com.sakura.novel.DTO.Response.BookshelfItemResponse">
+        <!-- user_bookshelf 表的字段 -->
+        <id property="id" column="bookshelf_id"/> <!-- 使用别名避免和book.id冲突 -->
+        <result property="userId" column="user_id"/>
+        <result property="bookId" column="book_id"/>
+        <result property="lastReadTime" column="last_read_time"/>
+        <result property="addedTime" column="added_time"/>
+
+        <!-- books 表的字段 -->
+        <result property="bookTitle" column="book_title"/>
+        <result property="bookCover" column="book_cover"/>
+        <result property="status" column="book_status"/>
+
+        <!-- categories 表的字段 -->
+        <result property="categoryName" column="category_name"/>
+
+        <!-- 子查询计算出的字段 -->
+        <result property="totalChapters" column="total_chapters"/>
+        <result property="lastReadChapterNumber" column="last_read_chapter_number"/>
+    </resultMap>
+    <!-- 定义一个可复用的列名列表 -->
+    <sql id="Base_Column_List">
+        id, user_id, book_id, last_read_chapter_id, progress, last_read_time, added_time
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO user_bookshelf
+        (user_id, book_id, last_read_chapter_id, last_read_time, added_time)
+        VALUES
+        (#{userId}, #{bookId}, #{lastReadChapterId}, #{lastReadTime}, #{addedTime})
+    </insert>
+
+    <!-- 1. 根据用户ID分页查询书架列表，按最后阅读时间降序 -->
+    <select id="selectByUserId" resultMap="BookshelfItemResultMap">
+        SELECT
+            ub.id AS bookshelf_id,
+            ub.user_id,
+            ub.book_id,
+            ub.last_read_time,
+            ub.added_time,
+
+            b.title AS book_title,
+            b.cover_image_url AS book_cover,
+            b.status AS book_status,
+
+            c.name AS category_name,
+
+            -- 子查询：获取书籍的总章节数
+            (SELECT COUNT(*) FROM chapters ch WHERE ch.book_id = ub.book_id) AS total_chapters,
+
+            -- 子查询：根据 last_read_chapter_id 获取具体的章节号
+            (SELECT ch.chapter_number FROM chapters ch WHERE ch.id = ub.last_read_chapter_id) AS last_read_chapter_number
+
+        FROM
+            user_bookshelf ub
+                LEFT JOIN
+            books b ON ub.book_id = b.id
+                LEFT JOIN
+            categories c ON b.category_id = c.id
+        WHERE
+            ub.user_id = #{userId}
+        ORDER BY
+            ub.last_read_time DESC
+    </select>
+
+    <!-- 2. 统计用户的书架书籍总数 -->
+    <select id="countByUserId" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM user_bookshelf
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 3. 动态更新阅读进度 -->
+    <!--
+        使用 <set> 和 <if> 标签实现动态 SQL。
+        只会更新传入对象中不为 null 的属性对应的字段。
+        last_read_at 字段通常在更新进度时会强制更新为当前时间。
+    -->
+    <update id="updateReadingProgress" parameterType="com.sakura.novel.entity.UserBookshelf">
+        UPDATE user_bookshelf
+        <set>
+            <if test="lastReadChapterId != null">
+                last_read_chapter_id = #{lastReadChapterId},
+            </if>
+            <!-- 每次更新进度时，都更新最后阅读时间 -->
+            <if test="lastReadTime != null">
+                last_read_time = #{lastReadTime},
+            </if>
+        </set>
+        WHERE user_id = #{userId} AND book_id = #{bookId}
+    </update>
+
+    <!-- 4. 根据用户ID和书籍ID从书架移除 -->
+    <delete id="deleteByUserIdAndBookId">
+        DELETE FROM user_bookshelf
+        WHERE user_id = #{userId} AND book_id = #{bookId}
+    </delete>
+
+    <!-- 5. 批量从书架移除书籍 -->
+    <!-- 使用 <foreach> 标签来处理 List 类型的参数 -->
+    <delete id="batchDeleteByBookIds">
+        DELETE FROM user_bookshelf
+        WHERE
+        user_id = #{userId}
+        AND book_id IN
+        <foreach collection="bookIds" item="bookId" open="(" separator="," close=")">
+            #{bookId}
+        </foreach>
+    </delete>
+
+    <!-- 6. 检查某本书是否已在书架 -->
+    <!--
+        使用 COUNT(1) 比 COUNT(*) 稍微高效一些，因为它不关心列的具体内容。
+        返回一个整数值，业务代码中判断它是否大于 0 即可。
+    -->
+    <select id="existsInBookshelf" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM user_bookshelf
+        WHERE user_id = #{userId} AND book_id = #{bookId}
+    </select>
+</mapper>
