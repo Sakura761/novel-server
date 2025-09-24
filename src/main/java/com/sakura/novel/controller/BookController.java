@@ -1,5 +1,7 @@
 package com.sakura.novel.controller;
 
+import com.sakura.novel.DTO.Request.BookSearchReqDto;
+import com.sakura.novel.DTO.Response.BookInfoRespDto;
 import com.sakura.novel.core.common.vo.ResultVO;
 import com.sakura.novel.entity.Book;
 import com.sakura.novel.DTO.Response.PageResult;
@@ -7,6 +9,7 @@ import com.sakura.novel.DTO.Response.BookBasicDTO;
 import com.sakura.novel.DTO.Response.BookDetailResponse;
 import com.sakura.novel.service.BookService;
 import com.sakura.novel.service.BookStatsRedisService;
+import com.sakura.novel.service.impl.EsSearchServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,6 +31,7 @@ public class BookController {
 
     private final BookService bookService;
     private final BookStatsRedisService bookStatsRedisService;
+    private final EsSearchServiceImpl esSearchService;
     // ===== 基础 CRUD 操作 =====
 
     /**
@@ -151,25 +155,34 @@ public class BookController {
     /**
      * 综合搜索书籍
      */
-    @GetMapping("/search")
+    @PostMapping("/search")
     @Operation(summary = "综合搜索书籍", description = "支持书名、频道、分类、字数范围、状态、VIP等所有搜索条件的组合搜索，返回轻量级书籍信息")
     @ApiResponse(responseCode = "200", description = "搜索成功")
-    public ResultVO<PageResult<BookBasicDTO>> searchBooks(
-            @Parameter(description = "书名关键词") @RequestParam(required = false) String title,
-            @Parameter(description = "频道：1=男频，0=女频") @RequestParam(required = false) Integer channel,
-            @Parameter(description = "分类ID") @RequestParam(required = false) Integer categoryId,
-            @Parameter(description = "作者ID") @RequestParam(required = false) Integer authorId,
-            @Parameter(description = "最小字数") @RequestParam(required = false) Integer minWordCount,
-            @Parameter(description = "最大字数") @RequestParam(required = false) Integer maxWordCount,
-            @Parameter(description = "状态：1=连载中，0=已完结") @RequestParam(required = false) Integer status,
-            @Parameter(description = "是否VIP：true=VIP，false=免费") @RequestParam(required = false) Boolean isVip,
-            @Parameter(description = "页码，从1开始") @RequestParam(defaultValue = "1") Integer pageNum,
-            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer pageSize) {
-
-        PageResult<BookBasicDTO> pageResult = bookService.searchBookBasicWithPageHelper(
-                title, channel, categoryId, authorId, minWordCount, maxWordCount, status, isVip, pageNum, pageSize);
+    public ResultVO<PageResult<BookInfoRespDto>> searchBooks(
+            @RequestBody BookSearchReqDto bookInfoRespDto) {
+        PageResult<BookInfoRespDto> pageResult = esSearchService.searchBooks(bookInfoRespDto);
         return ResultVO.success("搜索书籍成功", pageResult);
     }
+//    @GetMapping("/search")
+//    @Operation(summary = "综合搜索书籍", description = "支持书名、频道、分类、字数范围、状态、VIP等所有搜索条件的组合搜索，返回轻量级书籍信息")
+//    @ApiResponse(responseCode = "200", description = "搜索成功")
+//    public ResultVO<PageResult<BookBasicDTO>> searchBooks(
+//            @Parameter(description = "书名关键词") @RequestParam(required = false) String title,
+//            @Parameter(description = "频道：1=男频，0=女频") @RequestParam(required = false) Integer channel,
+//            @Parameter(description = "分类ID") @RequestParam(required = false) Integer categoryId,
+//            @Parameter(description = "作者ID") @RequestParam(required = false) Integer authorId,
+//            @Parameter(description = "最小字数") @RequestParam(required = false) Integer minWordCount,
+//            @Parameter(description = "最大字数") @RequestParam(required = false) Integer maxWordCount,
+//            @Parameter(description = "状态：1=连载中，0=已完结") @RequestParam(required = false) Integer status,
+//            @Parameter(description = "是否VIP：true=VIP，false=免费") @RequestParam(required = false) Boolean isVip,
+//            @Parameter(description = "页码，从1开始") @RequestParam(defaultValue = "1") Integer pageNum,
+//            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer pageSize) {
+//
+//        PageResult<BookBasicDTO> pageResult = bookService.searchBookBasicWithPageHelper(
+//                title, channel, categoryId, authorId, minWordCount, maxWordCount, status, isVip, pageNum, pageSize);
+//        return ResultVO.success("搜索书籍成功", pageResult);
+//    }
+
 
 
 
