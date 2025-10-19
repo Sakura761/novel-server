@@ -95,7 +95,7 @@
 - `JwtAuthenticationFilter`：从 `Authorization: Bearer <token>` 中解析用户信息，写入 `SecurityContext`
 - `JwtUtil`：封装 token 生成、校验与解析逻辑，密钥来源 `jwt.secret`
 - `UserContextUtil`：提供线程上下文的 `userId`/`username` 读取
-- 建议在后续扩展中结合自定义注解 `@RequireJwtAuth` 细化权限校验
+
 
 ## 11. 开发与运行指南
 1. 准备依赖：JDK 21、Maven 3.9.x、MySQL、Redis、Elasticsearch、MinIO（可选）
