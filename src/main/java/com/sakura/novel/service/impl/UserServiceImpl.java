@@ -4,8 +4,8 @@ import com.sakura.novel.entity.User;
 import com.sakura.novel.mapper.UserMapper;
 import com.sakura.novel.service.UserService;
 import com.sakura.novel.service.FileUploadService;
-import com.sakura.novel.DTO.Response.UserRegisterDTO;
-import com.sakura.novel.DTO.Response.UserLoginDTO;
+import com.sakura.novel.DTO.Request.UserRegisterReqDTO;
+import com.sakura.novel.DTO.Request.UserLoginReqDTO;
 import com.sakura.novel.DTO.Response.UserLoginResponse;
 import com.sakura.novel.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -134,43 +134,43 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User registerUser(UserRegisterDTO userRegisterDTO) {
-        if (userRegisterDTO == null) {
+    public User registerUser(UserRegisterReqDTO userRegisterReqDTO) {
+        if (userRegisterReqDTO == null) {
             throw new IllegalArgumentException("注册信息不能为空");
         }
         // 检查用户名是否已存在
-        User existingUser = userMapper.selectByUsername(userRegisterDTO.getUsername());
+        User existingUser = userMapper.selectByUsername(userRegisterReqDTO.getUsername());
         if (existingUser != null) {
             throw new IllegalArgumentException("用户名已存在");
         }
 
         // 创建用户对象
         User user = new User();
-        user.setUsername(userRegisterDTO.getUsername());
-        user.setPasswordHash(passwordEncoder.encode(userRegisterDTO.getPassword()));
-        user.setNickname(userRegisterDTO.getNickname() != null ? userRegisterDTO.getNickname() : userRegisterDTO.getUsername());
-        user.setEmail(userRegisterDTO.getEmail());
+        user.setUsername(userRegisterReqDTO.getUsername());
+        user.setPasswordHash(passwordEncoder.encode(userRegisterReqDTO.getPassword()));
+        user.setNickname(userRegisterReqDTO.getNickname() != null ? userRegisterReqDTO.getNickname() : userRegisterReqDTO.getUsername());
+        user.setEmail(userRegisterReqDTO.getEmail());
         user.setStatus(User.UserStatus.active);
 
         // 处理头像上传
-        if (userRegisterDTO.getAvatar() != null && !userRegisterDTO.getAvatar().isEmpty()) {
+        if (userRegisterReqDTO.getAvatar() != null && !userRegisterReqDTO.getAvatar().isEmpty()) {
             try {
                 // 验证文件类型
-                String contentType = userRegisterDTO.getAvatar().getContentType();
+                String contentType = userRegisterReqDTO.getAvatar().getContentType();
                 if (contentType == null || !contentType.startsWith("image/")) {
                     throw new IllegalArgumentException("头像必须是图片文件");
                 }
 
                 // 验证文件大小（限制为5MB）
-                if (userRegisterDTO.getAvatar().getSize() > 5 * 1024 * 1024) {
+                if (userRegisterReqDTO.getAvatar().getSize() > 5 * 1024 * 1024) {
                     throw new IllegalArgumentException("头像文件大小不能超过5MB");
                 }
 
                 // 生成唯一文件名并上传
-                String fileName = fileUploadService.generateUniqueFileName(userRegisterDTO.getAvatar().getOriginalFilename());
-                String avatarUrl = fileUploadService.uploadToJsdelivr(userRegisterDTO.getAvatar(), fileName);
+                String fileName = fileUploadService.generateUniqueFileName(userRegisterReqDTO.getAvatar().getOriginalFilename());
+                String avatarUrl = fileUploadService.uploadToJsdelivr(userRegisterReqDTO.getAvatar(), fileName);
                 String objectName = "avatars/" + fileName;
-                String avatarUrl2 = fileUploadService.uploadToMinio(userRegisterDTO.getAvatar(), objectName);
+                String avatarUrl2 = fileUploadService.uploadToMinio(userRegisterReqDTO.getAvatar(), objectName);
 
                 user.setAvatarUrl(avatarUrl);
             } catch (Exception e) {
@@ -192,7 +192,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserLoginResponse loginUser(UserLoginDTO userLoginDTO) {
+    public UserLoginResponse loginUser(UserLoginReqDTO userLoginDTO) {
         if (userLoginDTO == null) {
             throw new IllegalArgumentException("登录信息不能为空");
         }

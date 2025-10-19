@@ -69,7 +69,7 @@ springdoc:
     path: /swagger-ui.html
     tags-sorter: alpha
     operations-sorter: alpha
-  packages-to-scan: com.sakura.novel_server.controller
+  packages-to-scan: com.sakura.novel.controller
 
 # GitHub配置（用于图片上传到jsdelivr CDN）
 github:

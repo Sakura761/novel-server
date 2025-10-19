@@ -3,14 +3,11 @@ package com.sakura.novel.controller;
 import com.sakura.novel.core.common.vo.ResultVO;
 import com.sakura.novel.entity.User;
 import com.sakura.novel.service.UserService;
-import com.sakura.novel.DTO.Response.UserRegisterDTO;
-import com.sakura.novel.DTO.Response.UserLoginDTO;
+import com.sakura.novel.DTO.Request.UserRegisterReqDTO;
+import com.sakura.novel.DTO.Request.UserLoginReqDTO;
 import com.sakura.novel.DTO.Response.UserLoginResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,14 +41,7 @@ public class UserController {
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200",
-            description = "查询成功",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = Map.class),
-                examples = @ExampleObject(
-                    value = "{\n  \"success\": true,\n  \"message\": \"查询成功\",\n  \"data\": {\n    \"id\": 1,\n    \"username\": \"testuser\",\n    \"nickname\": \"测试用户\",\n    \"email\": \"test@example.com\",\n    \"avatarUrl\": \"https://example.com/avatar.jpg\",\n    \"status\": \"active\",\n    \"createTime\": \"2024-01-01T10:00:00\",\n    \"updateTime\": \"2024-01-01T10:00:00\"\n  }\n}"
-                )
-            )
+            description = "查询成功"
         ),
         @ApiResponse(responseCode = "404", description = "用户不存在"),
         @ApiResponse(responseCode = "400", description = "请求参数错误"),
@@ -242,7 +232,7 @@ public class UserController {
      * 支持多部分表单数据，包括文件上传
      * Content-Type: multipart/form-data
      *
-     * @param userRegisterDTO 注册信息，包含：
+     * @param userRegisterReqDTO 注册信息，包含：
      *                       - username: 用户名（必填）
      *                       - password: 密码（必填）
      *                       - nickname: 昵称（可选）
@@ -262,17 +252,12 @@ public class UserController {
     @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResultVO<?> registerUser(
         @Parameter(
-            description = "注册信息",
-            required = true,
-            content = @Content(
-                mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
-                schema = @Schema(implementation = UserRegisterDTO.class)
-            )
+            description = "注册信息", required = true
         )
-        @ModelAttribute UserRegisterDTO userRegisterDTO
+        @ModelAttribute UserRegisterReqDTO userRegisterReqDTO
     ) {
         try {
-            User registeredUser = userService.registerUser(userRegisterDTO);
+            User registeredUser = userService.registerUser(userRegisterReqDTO);
             return ResultVO.success("注册成功", registeredUser);
         } catch (IllegalArgumentException e) {
             return ResultVO.error(400, e.getMessage());
@@ -306,7 +291,7 @@ public class UserController {
             description = "登录信息",
             required = true
         )
-        @RequestBody UserLoginDTO userLoginDTO
+        @RequestBody UserLoginReqDTO userLoginDTO
     ) {
         try {
             UserLoginResponse loginResponse = userService.loginUser(userLoginDTO);

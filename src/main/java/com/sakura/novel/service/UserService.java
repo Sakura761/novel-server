@@ -1,8 +1,8 @@
 package com.sakura.novel.service;
 
 import com.sakura.novel.entity.User;
-import com.sakura.novel.DTO.Response.UserRegisterDTO;
-import com.sakura.novel.DTO.Response.UserLoginDTO;
+import com.sakura.novel.DTO.Request.UserRegisterReqDTO;
+import com.sakura.novel.DTO.Request.UserLoginReqDTO;
 import com.sakura.novel.DTO.Response.UserLoginResponse;
 
 import java.util.List;
@@ -69,15 +69,15 @@ public interface UserService {
 
     /**
      * 用户注册
-     * @param userRegisterDTO 注册信息
+     * @param userRegisterReqDTO 注册信息
      * @return 注册成功的用户信息
      */
-    User registerUser(UserRegisterDTO userRegisterDTO);
+    User registerUser(UserRegisterReqDTO userRegisterReqDTO);
 
     /**
      * 用户登录
      * @param userLoginDTO 登录信息
      * @return 登录响应信息
      */
-    UserLoginResponse loginUser(UserLoginDTO userLoginDTO);
+    UserLoginResponse loginUser(UserLoginReqDTO userLoginDTO);
 }

@@ -48,6 +48,7 @@ public class BookStatsRedisServiceImpl implements BookStatsRedisService {
 
     @Override
     public void incrementReadCount(Long bookId, int count) {
+
         String key = generateKey(bookId, LocalDate.now());
         redisTemplate.opsForHash().increment(key, FIELD_READ_COUNT, count);
         // 设置过期时间为3天，确保数据能够被持久化

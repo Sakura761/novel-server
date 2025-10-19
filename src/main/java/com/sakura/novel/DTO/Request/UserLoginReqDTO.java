@@ -1,4 +1,4 @@
-package com.sakura.novel.DTO.Response;
+package com.sakura.novel.DTO.Request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -8,11 +8,11 @@ import lombok.Data;
  */
 @Data
 @Schema(name = "UserLoginDTO", description = "用户登录请求数据")
-public class UserLoginDTO {
+public class UserLoginReqDTO {
 
-    @Schema(description = "用户名", required = true, example = "testuser")
+    @Schema(description = "用户名", example = "testuser")
     private String username;
 
-    @Schema(description = "密码", required = true, example = "password123")
+    @Schema(description = "密码", example = "password123")
     private String password;
 }
